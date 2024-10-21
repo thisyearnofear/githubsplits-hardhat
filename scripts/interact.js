@@ -1,7 +1,7 @@
 const { ethers } = require("hardhat");
 
 async function main() {
-  const PROXY_ADDRESS = "0xe6a54Ce9e840f51D7493F0b882e38Ff611fdd7a6";
+  const PROXY_ADDRESS = "0xD74Af9BfB9CbC2237726F163F817389aDD2D69d9";
   const GitHubSplits = await ethers.getContractFactory("GitHubSplits");
   const contract = GitHubSplits.attach(PROXY_ADDRESS);
 
@@ -20,7 +20,7 @@ async function main() {
 
   // 3. Send donation to contract
   console.log("\nSending donation to contract:");
-  const donationAmount = ethers.parseEther("0.1");
+  const donationAmount = ethers.parseEther("0.01");
   await sendDonation(owner, PROXY_ADDRESS, donationAmount);
 
   // 4. Check contract balance
@@ -29,8 +29,8 @@ async function main() {
 
   // 5. Simulate claims for each user
   console.log("\nSimulating claims:");
-  await simulateClaim(contract, "user1", addr1);
-  await simulateClaim(contract, "user2", addr2);
+  await simulateClaim(contract, "user1", owner);
+  await simulateClaim(contract, "user2", owner);
   await simulateClaim(contract, "user3", owner);
 
   // 6. Check contract balance after claims
@@ -84,13 +84,22 @@ async function sendDonation(signer, contractAddress, amount) {
 
 async function simulateClaim(contract, username, signer) {
   try {
-    // In a real scenario, you'd generate a proper proof here
+    console.log(`Attempting to claim for ${username}`);
     const dummyProof = ethers.randomBytes(32);
+    console.log(`Generated dummy proof`);
+    console.log(`Signer address: ${await signer.getAddress()}`);
+    console.log(`Contract address: ${await contract.getAddress()}`);
     const tx = await contract.connect(signer).claim(username, dummyProof);
-    await tx.wait();
-    console.log(`Claim simulated for ${username}`);
+    console.log(`Claim transaction sent`);
+    const receipt = await tx.wait();
+    console.log(
+      `Claim simulated for ${username}. Transaction hash: ${receipt.hash}`
+    );
   } catch (error) {
     console.error(`Claim failed for ${username}:`, error.message);
+    if (error.data) {
+      console.error(`Error data:`, error.data);
+    }
   }
 }
 
