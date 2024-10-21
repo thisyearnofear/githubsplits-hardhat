@@ -10,9 +10,10 @@ contract GitHubSplits is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     uint256 public totalShares;
     bytes32[] public usernames;
 
-    event ShareAdded(string githubUsername, uint256 shareAmount);
-    event FundsClaimed(string githubUsername, uint256 amount);
-    event FundsWithdrawn(address owner, uint256 amount);
+    event ShareAdded(string indexed githubUsername, uint256 shareAmount);
+    event FundsClaimed(string indexed githubUsername, uint256 amount);
+    event FundsWithdrawn(address indexed owner, uint256 amount);
+    event Donation(address indexed donor, uint256 amount);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -56,7 +57,11 @@ contract GitHubSplits is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         uint256 amount = calculateClaimableAmount(usernameBytes);
         totalShares -= shares[usernameBytes];
         shares[usernameBytes] = 0;
-        payable(msg.sender).transfer(amount);
+        
+        // Replace transfer with call
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        require(success, "Transfer failed");
+        
         emit FundsClaimed(githubUsername, amount);
     }
 
@@ -82,7 +87,9 @@ contract GitHubSplits is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 
     function withdraw() external onlyOwner {
         uint256 amount = address(this).balance;
-        payable(owner()).transfer(amount);
+        // Replace transfer with call
+        (bool success, ) = payable(owner()).call{value: amount}("");
+        require(success, "Transfer failed");
         emit FundsWithdrawn(owner(), amount);
     }
 
@@ -120,5 +127,12 @@ contract GitHubSplits is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         override
     {}
 
-    receive() external payable {}
+    function donate() external payable {
+        require(msg.value > 0, "Donation amount must be greater than zero");
+        emit Donation(msg.sender, msg.value);
+    }
+
+    receive() external payable {
+        emit Donation(msg.sender, msg.value);
+    }
 }
